@@ -18,6 +18,7 @@ library(tokenizers)
 library(tm)
 library(stringr)
 library(dplyr)
+library(treemapify)
 
 
 corpositivo <- "#20B2AA";
@@ -39,15 +40,16 @@ badwords <- c("compartilhado","boa","scontent.xx.fbcdn.net","https","oh","oe","p
               "enem","vçpt","vç","x","vc", "aqui", "você", "tá", "dia", "amanhã", "ba","aqui","governador",
               "Governador","GOVERNADOR","governado","Governado","GOVERNADO","rui","Rui","costa","Costa","RUI",
               "COSTA","Governo","governo","GOVERNO","Bahia","bahia","com","que","nao","meu","mais","por","uma",
-              "pra","para","um","mais","mas")
+              "pra","para","um","mais","mas","clap","para","tone","skin","type","heart","facebook","iticas","munici","3","4",
+              "unamused","esses","essas","até","são","ate","sao","todas","todos","toda","todo","essa", "esse","2")
 palette <- c("#ff9ff3","#feca57","#ff6b6b","#48dbfb","#1dd1a1")
 
 getUnigram <- function(text){
   text <- removeWords(text,c(stopwords("portuguese"),badwords))
-  text <- rm_nchar_words(text, "1")#remove words with only one character
-  text <- rm_nchar_words(text, "2")#remove words with two characters
-  text <- rm_nchar_words(text, "3")#remove words with two characters
-  text <- gsub(" *\\b[[:alpha:]]{1,2}\\b *", " ", text) # Remove 1-3 letter words
+#  text <- rm_nchar_words(text, n= "1")#remove words with only one character
+#  text <- rm_nchar_words(text, n="2")#remove words with two characters
+  text <- rm_nchar_words(text, n="3")#remove words with two characters
+  text <- gsub(" *\\b[[:alpha:]]{1,2}\\b *", " ", text) # Remove 1-2 letter words
   text <- gsub("^ +| +$|( ) +", "\\1", text) # Remove excessive spacing
   text <- stringi::stri_trans_general(text, "latin-ascii")
   unigram <- data.frame(words = unlist(tokenize_ngrams(text, n = 1L, n_min = 1L, simplify = TRUE)))
@@ -454,55 +456,7 @@ function(input, output) {
          theme_bw() +
          xlab("Data") + ylab("Favorabilidade dos Posts") + ylim(-1,1)
    }
-   
-   
-   plotCurtidasComentarios = function() {
-      filepath <- input$file$datapath
-      file <- read_xlsx(filepath)
-      
-      file %>% 
-         dplyr::select(`Autor ID`, Polaridade, Comentários, Curtidas) %>%
-         group_by(`Autor ID`, Polaridade) %>% 
-         #   filter(Polaridade == "Negativo") %>%
-         arrange(`Autor ID`) %>%
-         summarise(totalCurtidas = sum(as.numeric(Curtidas)), 
-                   totalComentarios = sum(as.numeric(Comentários))) %>%
-         arrange(totalComentarios, totalCurtidas) %>%
-         filter(totalComentarios >= 0) %>%
-         tail(50) %>%
-         ggplot() + 
-         geom_point(aes(x = totalComentarios, 
-                        y = totalCurtidas, 
-                        col = Polaridade)) + 
-         ylab("Número de Curtidas") +
-         xlab("Número de Comentários") +
-         geom_text( aes (x = as.numeric(totalComentarios), 
-                         y = as.numeric(totalCurtidas), 
-                         label = ifelse(totalCurtidas > 5, `Autor ID`,"") ) , 
-                    vjust = 0, hjust = 1, size = 2.5 )
 
-   }
-   
-   plotComentaristasPopulares = function() {
-      filepath <- input$file$datapath
-      file <- read_xlsx(filepath)
-      file %>% 
-         dplyr::select(`Autor ID`, Curtidas, Polaridade) %>%
-         group_by(`Autor ID`) %>% 
-         count(`Autor ID`, Curtidas, Polaridade) %>%
-         arrange(n, `Autor ID`) %>%
-         tail(50) %>% 
-         ggplot() + 
-         geom_bar(stat = "identity", 
-                  aes(x = reorder(`Autor ID`,as.numeric(n)), y = as.numeric(n), fill = Polaridade)
-         ) + 
-         ylab("Número de Curtidas em Comentários") +
-         xlab("") +
-         scale_fill_manual("Polaridade", values = c("Positivo" = corpositivo, "Negativo" = cornegativo, "Neutro" = corneutro)) +
-         #   geom_text( aes (x = reorder(`Autor ID`,as.numeric(n)), y = as.numeric(n), label = as.numeric(n) ) , vjust = 0, hjust = 0, size = 2 ) + 
-         coord_flip()
-   }
-      
    plotDetratoresApoiadores = function() {
       filepath <- input$file$datapath
       file <- read_xlsx(filepath)
@@ -572,54 +526,28 @@ function(input, output) {
          coord_flip()
    }
 
-   
-   plotApoiadoresCurtidos = function() {
-      filepath <- input$file$datapath
-      file <- read_xlsx(filepath)
-      
-      file %>% 
-         dplyr::select(`Autor ID`, Polaridade, Curtidas) %>%
-         group_by(`Autor ID`, Polaridade) %>% 
-         arrange(`Autor ID`, Polaridade, Curtidas) %>%
-         filter(Polaridade == "Positivo", Curtidas > 0) %>%
-         arrange(`Autor ID`, Curtidas) %>%
-         summarise(total = sum(as.numeric(Curtidas))) %>%
-         arrange(total) %>%
-         filter(total > 3) %>%
-         tail(50) %>%
-         ggplot() + 
-         geom_bar(stat = "identity", 
-                  aes(x = reorder(`Autor ID`,as.numeric(total)), y = as.numeric(total), fill = Polaridade)
-         ) + 
-         ylab("Número de Curtidas") +
-         xlab("") +
-         scale_fill_manual("Polaridade", values = c("Positivo" = corpositivo, "Negativo" = cornegativo, "Neutro" = corneutro)) +
-         geom_text( aes (x = reorder(`Autor ID`,as.numeric(total)), y = as.numeric(total), label = as.numeric(total) ) , vjust = 0, hjust = 0, size = 2 ) + 
-         coord_flip()
-   }
-   
    plotApoiadoresAssiduos = function() {
       filepath <- input$file$datapath
       file <- read_xlsx(filepath)
       
       file %>% 
-         dplyr::select(`Autor ID`, Polaridade) %>%
-         group_by(`Autor ID`, Polaridade) %>% 
-         arrange(`Autor ID`, Polaridade) %>%
-         filter(Polaridade == "Positivo") %>%
-         arrange(`Autor ID`) %>%
+         dplyr::select(user_id, polarization) %>%
+         group_by(user_id, polarization) %>% 
+         arrange(user_id, polarization) %>%
+         filter(polarization == "positiva") %>%
+         arrange(user_id) %>%
          summarise(total = n()) %>%
          arrange(total) %>%
          filter(total > 3) %>%
          tail(50) %>%
          ggplot() + 
          geom_bar(stat = "identity", 
-                  aes(x = reorder(`Autor ID`,as.numeric(total)), y = as.numeric(total), fill = Polaridade)
+                  aes(x = reorder(user_id,as.numeric(total)), y = as.numeric(total), fill = polarization)
          ) + 
          ylab("Número de Comentários") +
          xlab("") +
          scale_fill_manual("Polaridade", values = c("Positivo" = corpositivo, "Negativo" = cornegativo, "Neutro" = corneutro)) +
-         geom_text( aes (x = reorder(`Autor ID`,as.numeric(total)), y = as.numeric(total), label = as.numeric(total) ) , vjust = 0, hjust = 0, size = 2 ) + 
+         geom_text( aes (x = reorder(user_id,as.numeric(total)), y = as.numeric(total), label = as.numeric(total) ) , vjust = 0, hjust = 0, size = 2 ) + 
          coord_flip()
    }
    
@@ -628,8 +556,8 @@ function(input, output) {
       file <- read_xlsx(filepath)
       
    text <- file %>%
-         filter(Polaridade == "Negativo") %>%
-         dplyr::select(Conteúdo) %>%
+         filter(polarization == "negativa") %>%
+         dplyr::select(text) %>%
          toupper()
       
       mydfm <- getDFMatrix(text);
@@ -775,72 +703,73 @@ function(input, output) {
       filepath <- input$file$datapath
       file <- read_xlsx(filepath)
 
-      my_group_number <- unlist(strsplit(unlist(strsplit(unlist(strsplit(filepath,"[.]"))[1],"ã"))[2],"o"))[2]
+      #my_group_number <- unlist(strsplit(unlist(strsplit(unlist(strsplit(filepath,"[.]"))[1],"ã"))[2],"o"))[2]
 
-      file <- cleaningRelNI1Data(file)
+      #file <- cleaningRelNI1Data(file)
 
       file <- file %>% 
-	      group_by(Polaridade, Grupos, Temas) %>%
-         summarise(npositivo = length(which(Polaridade == "Positivo")),
-	                nnegativo = length(which(Polaridade == "Negativo")),
-			          nneutro = length(which(Polaridade == "Neutro")),
+        filter(!is.na(tag)) %>%
+	      group_by(polarization, tag) %>%
+         summarise(npositivo = length(which(polarization == "positiva")),
+	                nnegativo = length(which(polarization == "negativa")),
+			          nneutro = length(which(polarization == "neutra")),
 			          is = ifelse(((npositivo + nnegativo)==0),
 			                      0,
 			                      ifelse((nnegativo + npositivo > 2),(npositivo - nnegativo) / (npositivo + nnegativo), 0)))%>%
          ungroup()%>%
-         select(Grupos, Temas, npositivo, nnegativo, is)
+         select(tag, npositivo, nnegativo, is)
 
       positivos <- file  %>% 
 	      filter(npositivo > 0)%>%
-         select(Grupos, Temas, npositivo)
+         select(tag, npositivo)
 
 	  negativos <- file %>%
-	     select(Grupos, Temas, nnegativo) %>%
+	     select(tag, nnegativo) %>%
 	     filter(nnegativo > 0) %>%
 	     mutate(nnegativo = nnegativo * (-1)) %>%
-	     select(Grupos, Temas, nnegativo)
+	     select(tag, nnegativo)
 
 
-	  names(positivos) <- c("Grupos","Temas","Comentarios")
-	  names(negativos) <- c("Grupos","Temas","Comentarios")
+	  names(positivos) <- c("tag","Comentarios")
+	  names(negativos) <- c("tag","Comentarios")
 	  todos <- rbind(positivos,negativos)
-	  todos <- todos %>% mutate(Sentimento = ifelse(Comentarios > 0, "Positivo","Negativo"))
+	  todos <- todos %>% mutate(Sentimento = ifelse(Comentarios > 0, "positiva","negativa"))
 	  
-	  todos$all_group_number <- unlist(strsplit(unlist(strsplit(todos$Grupos, "-"))[seq(from=1, by = 2, length.out = length(todos$Grupos))], " "))[seq(from=2, by=2, length.out = length(todos$Grupos))]
+#	  todos$all_group_number <- unlist(strsplit(unlist(strsplit(todos$Grupos, "-"))[seq(from=1, by = 2, length.out = length(todos$Grupos))], " "))[seq(from=2, by=2, length.out = length(todos$Grupos))]
 	  
-	  todos <- todos %>%
-	     filter(all_group_number == my_group_number)
+#	  todos <- todos %>%
+#	     filter(all_group_number == my_group_number)
 	  
 	  todos <- todos %>% 
-	     group_by(Grupos, Temas, Sentimento) %>% 
+	     group_by(tag, Sentimento) %>% 
 	     summarise(count = sum(abs(Comentarios))) %>%
-	     group_by(Temas) %>%
+	     group_by(tag) %>%
 	     mutate(Porcentagem = 100*count / sum(count) ) %>%
-	     arrange(Temas)
+	     arrange(tag)
 
-		todos %>%
-		   ggplot(aes(x = reorder(Temas, Porcentagem), y = Porcentagem, fill=Sentimento)) + 
+		todos %>% 
+		   ggplot(aes(x = toupper(reorder(tag, Porcentagem)), y = Porcentagem, fill=Sentimento)) + 
 		   geom_bar(stat="identity") + 
-		   scale_fill_manual("Sentimento", values = c("Positivo" = corpositivo, "Negativo" = cornegativo))+
-		   geom_text(size = 3, col = "white", aes(x = reorder(Temas, Porcentagem), y = if_else(todos$Sentimento == "Negativo", 10, 90), label = paste(as.character(round(Porcentagem,2)),"%",sep=""), hjust = 0)) +
-		   ylab("% de Comentários") + xlab("Temas") + 
+		   scale_fill_manual("Polarização", values = c("positiva" = corpositivo, "negativa" = cornegativo))+
+		   geom_text(size = 3, col = "white", aes(x = toupper(reorder(tag, Porcentagem)), y = if_else(todos$Sentimento == "negativa", 10, 90), label = paste(as.character(round(Porcentagem,2)),"%",sep=""), hjust = 0)) +
+		   ylab("% de Comentários") + xlab("Tags") + 
 			coord_flip()
    }
 
    plotGenero = function() {
       filepath <- input$file$datapath
       file <- read_xlsx(filepath)
-      file$Genero[which(is.na(file$Genero))] <- "Não declarado"
+      file$gender[which(is.na(file$gender))] <- "Não declarado"
       file %>% 
-         dplyr::select(Genero, Polaridade) %>%
-         dplyr::filter(toupper(Polaridade) %in% c("POSITIVA","NEGATIVA","NEUTRA")) %>%
-         group_by(Genero) %>% 
-         count(Genero, Polaridade) %>%
-         arrange(n, Genero) %>%
+         dplyr::select(gender, polarization) %>%
+         dplyr::filter(toupper(polarization) %in% c("POSITIVA","NEGATIVA","NEUTRA")) %>%
+         group_by(gender) %>% 
+         count(gender, polarization) %>%
+         arrange(n, gender) %>%
          tail(50) %>% 
          ggplot() + 
          geom_bar(stat = "identity", 
-                  aes(x = Genero, y = as.numeric(n), fill = toupper(Polaridade))
+                  aes(x = gender, y = as.numeric(n), fill = toupper(polarization))
          ) + 
          ylab("Número de comentários") +
          xlab("") +
@@ -855,6 +784,7 @@ function(input, output) {
       text <- toupper(file$Conteúdo)
       unigram <- getUnigram(text)
       unigram <- unigram %>% 
+        filter(!(words %in% badwords))%>% 
         filter(!is.na(words)) %>% 
         group_by(words) %>% 
         summarise(nwords = n()) %>% 
@@ -876,6 +806,7 @@ function(input, output) {
       text <- toupper(file$Conteúdo[which(toupper(file$Polaridade) == "NEGATIVA")])
       unigram <- getUnigram(text)
       unigram <- unigram %>% 
+        filter(!(words %in% badwords))%>% 
         filter(!is.na(words)) %>% 
         group_by(words) %>% 
         summarise(nwords = n()) %>% 
@@ -897,6 +828,7 @@ function(input, output) {
       text <- toupper(file$Conteúdo[which(toupper(file$Polaridade) == "POSITIVA")])
       unigram <- getUnigram(text)
       unigram <- unigram %>% 
+        filter(!(words %in% badwords))%>% 
         filter(!is.na(words)) %>% 
         group_by(words) %>% 
         summarise(nwords = n()) %>% 
@@ -918,6 +850,7 @@ function(input, output) {
       text <- toupper(file$Conteúdo[which(toupper(file$Polaridade) == "NEUTRA")])
       unigram <- getUnigram(text)
       unigram <- unigram %>% 
+        filter(!(words %in% badwords))%>% 
         filter(!is.na(words)) %>% 
         group_by(words) %>% 
         summarise(nwords = n()) %>% 
@@ -998,6 +931,7 @@ function(input, output) {
       text <- toupper(file$text)
       unigram <- getUnigram(text)
       unigram <- unigram %>% 
+        filter(!(words %in% badwords))%>% 
         filter(!is.na(words)) %>% 
         select(words) %>% group_by(words) %>% 
         summarise(palavras = n()) %>% 
@@ -1031,6 +965,7 @@ function(input, output) {
      text <- toupper(file$text[which(toupper(file$polarization) == "NEGATIVA")])
      unigram <- getUnigram(text)
      unigram <- unigram %>% 
+       filter(!(words %in% badwords))%>% 
        filter(!is.na(words)) %>% 
        select(words) %>% group_by(words) %>% 
        summarise(palavras = n()) %>% 
@@ -1065,6 +1000,7 @@ function(input, output) {
      text <- toupper(file$text[which(toupper(file$polarization) == "POSITIVA")])
      unigram <- getUnigram(text)
      unigram <- unigram %>% 
+       filter(!(words %in% badwords))%>% 
        filter(!is.na(words)) %>% 
        select(words) %>% group_by(words) %>% 
        summarise(palavras = n()) %>% 
@@ -1099,6 +1035,7 @@ function(input, output) {
      text <- toupper(file$text[which(toupper(file$polarization) == "NEUTRA")])
      unigram <- getUnigram(text)
      unigram <- unigram %>% 
+       filter(!(words %in% badwords))%>% 
        filter(!is.na(words)) %>% 
        select(words) %>% group_by(words) %>% 
        summarise(palavras = n()) %>% 
@@ -1207,21 +1144,6 @@ function(input, output) {
                           res = 300, units = "in")
         }
         ggsave(file, plot = plotDetratoresAssiduos(), device = device)
-        
-     }     
-  )
-  
-  
-  output$apoiadorescurtidos = downloadHandler(
-     filename = function() {
-        paste("apoiadorescurtidos.png", sep = "")
-     },
-     content = function(file) {
-        device <- function(..., width, height) {
-           grDevices::png(..., width = width, height = height,
-                          res = 300, units = "in")
-        }
-        ggsave(file, plot = plotApoiadoresCurtidos(), device = device)
         
      }     
   )
