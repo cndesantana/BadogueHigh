@@ -242,11 +242,11 @@ getMatrizDeOcorrencias <- function(text){
    return(d)
 }
 
-getIndiceDeFavorabilidade <- function(polaridade){
-   sentimentos <- toupper(polaridade)
+getIndiceDeFavorabilidade <- function(polarization){
+   sentimentos <- toupper(polarization)
    allsentimentos <- c("NEUTRA","NEGATIVA","POSITIVA");
    mp <- length(which(sentimentos==allsentimentos[3]));#POSITIVA
-   mt <- length(polaridade);#Total
+   mt <- length(polarization);#Total
   
    indicefavorabilidade <- ifelse(mt == 0, 0, as.numeric(mp/mt))#changing sentiment index to a "positive feedback index"
    indicefavorabilidade <- round((indicefavorabilidade),digits=2) 
@@ -255,14 +255,14 @@ getIndiceDeFavorabilidade <- function(polaridade){
 }
 
 getPositionY <- function(test){
-   labelpos <- array(NA,length(test$Polaridade))
-   labelpos[ which(test$Polaridade == "positiva") ] <- "0.02"
-   labelpos[ which(test$Polaridade == "negativa") ] <- "0.98"
-   datasb <- test$Data[which(test$Polaridade == "neutra")];
-   posvarb <- which(test$Polaridade == "neutra");
+   labelpos <- array(NA,length(test$polarization))
+   labelpos[ which(test$polarization == "positiva") ] <- "0.02"
+   labelpos[ which(test$polarization == "negativa") ] <- "0.98"
+   datasb <- test$Data[which(test$polarization == "neutra")];
+   posvarb <- which(test$polarization == "neutra");
    for(i in 1:length(datasb)){
       datasb_ <- datasb[i];
-      positionobsb <- which(test$Data == datasb_ & test$Polaridade == "positiva")
+      positionobsb <- which(test$Data == datasb_ & test$polarization == "positiva")
       obsb <- ifelse(length(positionobsb) > 0, test$freq[positionobsb], 0);
       labelpos[posvarb[i]] <- obsb + 0.02
    }
@@ -270,9 +270,9 @@ getPositionY <- function(test){
 }
 
 removeUsersOutliers <- function(file,percent){
-   ncommentoutliers <- as.numeric(quantile(as.numeric(table(file$`Autor ID`)),percent))
-   usersoutliers <- names(table(file$`Autor ID`)[which(as.numeric(table(file$`Autor ID`)) > ncommentoutliers)]);
-   file <- file %>% filter(!(`Autor ID` %in% usersoutliers))
+   ncommentoutliers <- as.numeric(quantile(as.numeric(table(file$user_id)),percent))
+   usersoutliers <- names(table(file$user_id)[which(as.numeric(table(file$user_id)) > ncommentoutliers)]);
+   file <- file %>% filter(!(user_id %in% usersoutliers))
    return(file)
 }
 
@@ -308,111 +308,12 @@ ggplotColours <- function(n = 6, h = c(0, 360) + 15){
 
 function(input, output) {
    
-   plotMelhorPiorPosts = function(){
-      filepath <- input$file$datapath
-      file <- read_xlsx(filepath)
-      
-      idPostsData <- file$`ID do Post`
-      uniqueIdsPostsData <- unique(sort(idPostsData))
-      mymatrix <- list();
-      for(iposts in 1:length(uniqueIdsPostsData)){
-         idPost <- uniqueIdsPostsData[iposts]
-         posPosts <- which(file$`ID do Post` == idPost)
-         polaridadePostData <- file$Polaridade[posPosts]
-         if(length(polaridadePostData) >= 5){
-            sentimento <- getIndiceDeFavorabilidade(polaridadePostData);
-            cat(paste(idPost,sentimento,length(polaridadePostData),sep=" "),sep="\n");
-            mymatrix <- rbind(mymatrix,cbind(as.character(idPost),sentimento, length(polaridadePostData)))         
-         }
-      }
-      
-      mymatrix <- data.frame(mymatrix)
-      colnames(mymatrix) <- c("id","sentimento","ncomentarios")
-      mymatrix <- mymatrix %>% filter(sentimento < 1 & sentimento > -1)
-      mymatrix$id <- unlist(mymatrix$id)
-      mymatrix$sentimento <- as.numeric(unlist(mymatrix$sentimento))
-      mymatrix$ncomentarios <- as.numeric(unlist(mymatrix$ncomentarios))
-
-      subset1 <- mymatrix %>% arrange(sentimento, ncomentarios) %>% tail(1)
-      subset2 <- mymatrix %>% arrange(sentimento, ncomentarios) %>% head(1)
-      referencias <- c(subset1$id, subset2$id)
-
-      plot(-14:14,axes=FALSE,xlab="",ylab="",type="n")
-      gradient.rect(1,-10,3,10,reds=c(1,0), greens=c(seq(0,1,length=10),seq(1,0,length=10)),blues=c(0,1),gradient="y")
-      text(x = 0, y=10,  labels = 1,pos = 4)
-      text(x = -0.3, y=-10, labels = -1,pos = 4)
-
-      posReferenciasSentimento <- c(which(mymatrix$id==unlist(referencias)[1]),
-                                    which(mymatrix$id==unlist(referencias)[2])
-      )
-      
-      pos1 <- posReferenciasSentimento[1]
-      pos2 <- posReferenciasSentimento[2]
-      link1 <- paste("https://pt-br.facebook.com/",mymatrix$id[pos1],sep="")
-      link2 <- paste("https://pt-br.facebook.com/",mymatrix$id[pos2],sep="")
-      getScreenshot(link1, "post1")
-      getScreenshot(link2, "post2")
-
-      ima <- readJPEG("./figures_badogue/post1.jpg")   
-      isent <- mymatrix$sentimento[pos1]
-      rasterImage(ima, xleft = 7, ybottom=10*signif(isent,2)-3, xright = 20, ytop =10*signif(isent,2)+4)
-      idpostsent <- mymatrix$id[pos1]
-      text(x = 3, y=10*signif(isent,2), labels = paste(intToUtf8(9664),signif(isent,2)),pos = 4)
-#      text(x = 7*((is%%2)+1), y=10*signif(isent,2), labels = idpostsent,pos = 4)
-      
-      ima2 <- readJPEG("./figures_badogue/post2.jpg")   
-      isent2 <- mymatrix$sentimento[pos2]
-      rasterImage(ima2, xleft = 7, ybottom=10*signif(isent2,2)-3, xright = 20, ytop =10*signif(isent2,2)+4)
-      idpostsent2 <- mymatrix$id[pos2]
-      text(x = 3, y=10*signif(isent2,2), labels = paste(intToUtf8(9664),signif(isent2,2)),pos = 4)
-#      text(x = 7*((is%%2)+1), y=10*signif(isent2,2), labels = idpostsent2,pos = 4)
-
-   }
-   
-   plotPostsPorSentimento = function(){
-      filepath <- input$file$datapath
-      file <- read_xlsx(filepath)
-      idPostsData <- file$`ID do Post`
-      uniqueIdsPostsData <- unique(sort(idPostsData))
-      mymatrix <- list();
-      for(iposts in 1:length(uniqueIdsPostsData)){
-         idPost <- uniqueIdsPostsData[iposts]
-         polaridadePostData <- file$Polaridade[which(file$`ID do Post` == idPost)]
-         if(length(polaridadePostData) >= 5){
-            sentimento <- getIndiceDeFavorabilidade(polaridadePostData);
-            cat(paste(idPost,sentimento,length(polaridadePostData),sep=" "),sep="\n");
-            mymatrix <- rbind(mymatrix,cbind(as.character(idPost),sentimento, length(polaridadePostData)))         
-         }
-      }
-      
-      mymatrix <- data.frame(mymatrix)
-      colnames(mymatrix) <- c("id","sentimento","ncomentarios")
-      mymatrix$id <- unlist(mymatrix$id)
-      mymatrix$sentimento <- as.numeric(unlist(mymatrix$sentimento))
-      mymatrix$ncomentarios <- as.numeric(unlist(mymatrix$ncomentarios))
-      mymatrix <- mymatrix %>% filter(sentimento < 1 & sentimento > -1)
-      
-      mymatrix %>% 
-         dplyr::select(id, sentimento, ncomentarios) %>% 
-         group_by(id, sentimento, ncomentarios) %>% 
-         arrange(sentimento, ncomentarios) %>%
-         filter(ncomentarios > 100) %>%
-         tail(60) %>%
-         ggplot() + 
-         geom_bar(stat="identity", aes(x=reorder(as.character(id),as.numeric(sentimento)),y=as.numeric(sentimento))) + 
-         scale_fill_manual(cornegativo) +
-         xlab("") + ylab("Sentimento dos Posts") + 
-         geom_text( aes(x=reorder(as.character(id),as.numeric(sentimento)),y=as.numeric(sentimento), label = signif(as.numeric(sentimento),2) ) , vjust = 0, hjust = ifelse(as.numeric(sentimento) > 0,0,1), size = 3 ) +
-         coord_flip()
-      
-   }
-
    plotIndiceFavorabilidade = function() {
       filepath <- input$file$datapath
       file <- read_xlsx(filepath)
       
-      allpolaridade <- toupper(file$polarization)
-      isent <- getIndiceDeFavorabilidade(allpolaridade);
+      allpolarization <- toupper(file$polarization)
+      isent <- getIndiceDeFavorabilidade(allpolarization);
 
       colfunc <- colorRampPalette(c(corpositivo,corneutro))
       legend_image <- as.raster(matrix(colfunc(20), ncol=1))
@@ -423,82 +324,24 @@ function(input, output) {
       rasterImage(legend_image, 1,0.1,3,9.9)
    }
 
-   plotVariabilidade = function() {
-      filepath <- input$file$datapath
-      file <- read_xlsx(filepath)
-      datasPosts <- file %>% 
-        mutate(created_at = ymd_hms(created_at)) %>% 
-        select(created_at)
-      datasPosts <- datasPosts %>% format("%d-%m-%Y")
-      uniqueDataPosts <- unique(sort(datasPosts$created_at))
-      mymatrix <- data.frame(Data = character(0),id = character(0),favorabilidade=numeric(0));
-      for(idata in 1:length(uniqueDataPosts)){
-         data <- uniqueDataPosts[idata];
-         posData <- which(datasPosts$created_at == data)
-         idPostsData <- file$id[posData]
-         uniqueIdsPostsData <- unique(sort(idPostsData))
-         for(iposts in 1:length(uniqueIdsPostsData)){
-            idPost <- uniqueIdsPostsData[iposts]
-            polaridadePostData <- as.character(file$polarization[which(file$id[posData] == idPost)])
-            if(length(polaridadePostData) >= 2){
-               favorabilidade <- getIndiceDeFavorabilidade(polaridadePostData);
-               cat(paste(data,length(polaridadePostData), idPost,favorabilidade,sep=" "),sep="\n");
-               mymatrix <- rbind(mymatrix,data.frame(as.character(data),idPost,favorabilidade))          
-            }
-         }
-      }
-      colnames(mymatrix) <- c("Data","id","favorabilidade")
-#      mymatrix <- as.data.frame(mymatrix)
-      mymatrix <- mymatrix %>% filter(as.numeric(favorabilidade) <= 1 & as.numeric(favorabilidade) >= 0)
-      mymatrix %>% ggplot(aes(x=dmy(Data),y=as.numeric(favorabilidade))) + 
-        geom_point(stat="identity") + 
-         stat_smooth(method="loess", span=0.1, se=TRUE, aes(Sombra="Desvio"), alpha=0.3) +
-         theme_bw() +
-         xlab("Data") + ylab("Favorabilidade dos Posts") + ylim(-1,1)
-   }
-
    plotDetratoresApoiadores = function() {
       filepath <- input$file$datapath
       file <- read_xlsx(filepath)
       file %>% 
-         dplyr::select(`Autor ID`, Polaridade) %>%
-         group_by(`Autor ID`) %>% 
-         count(`Autor ID`, Polaridade) %>%
-         arrange(n, `Autor ID`) %>%
+         dplyr::select(user_id, polarization) %>%
+         group_by(user_id) %>% 
+         count(user_id, polarization) %>%
+         arrange(n, user_id) %>%
          tail(50) %>% 
          ggplot() + 
          geom_bar(stat = "identity", 
-                  aes(x = reorder(`Autor ID`,as.numeric(n)), y = as.numeric(n), fill = Polaridade)) + 
+                  aes(x = reorder(user_id,as.numeric(n)), y = as.numeric(n), fill = polarization)) + 
          ylab("Número de comentários") +
          xlab("") +
          scale_fill_manual("Polaridade", values = c("Positivo" = corpositivo, "Negativo" = cornegativo, "Neutro" = corneutro)) +
-         #   geom_text( aes (x = reorder(`Autor ID`,as.numeric(n)), y = as.numeric(n), label = as.numeric(n) ) , vjust = 0, hjust = 0, size = 2 ) + 
-         coord_flip()
-   }
-   
-   plotDetratoresCurtidos = function() {
-      filepath <- input$file$datapath
-      file <- read_xlsx(filepath)
-
-      file %>% 
-         dplyr::select(`Autor ID`, Polaridade, Curtidas) %>%
-         group_by(`Autor ID`, Polaridade) %>% 
-         arrange(`Autor ID`, Polaridade, Curtidas) %>%
-         filter(Polaridade == "Negativo", Curtidas > 0) %>%
-         arrange(`Autor ID`, Curtidas) %>%
-         summarise(total = sum(as.numeric(Curtidas))) %>%
-         arrange(total) %>%
-         filter(total > 3) %>%
-         tail(50) %>%
-         ggplot() + 
-         geom_bar(stat = "identity", 
-                  aes(x = reorder(`Autor ID`,as.numeric(total)), y = as.numeric(total), fill = Polaridade)
-         ) + 
-         ylab("Número de Curtidas") +
-         xlab("") +
-         scale_fill_manual("Polaridade", values = c("Positivo" = corpositivo, "Negativo" = cornegativo, "Neutro" = corneutro)) +
-         geom_text( aes (x = reorder(`Autor ID`,as.numeric(total)), y = as.numeric(total), label = as.numeric(total) ) , vjust = 0, hjust = 0, size = 2 ) + 
-         coord_flip()
+         geom_text( aes (x = reorder(user_id,as.numeric(n)), y = as.numeric(n), label = as.numeric(n) ) , vjust = 0, hjust = 0, size = 2 ) + 
+         coord_flip() +
+        theme_bw()
    }
    
    plotDetratoresAssiduos = function() {
@@ -506,24 +349,25 @@ function(input, output) {
       file <- read_xlsx(filepath)
       
       file %>% 
-         dplyr::select(`Autor ID`, Polaridade) %>%
-         group_by(`Autor ID`, Polaridade) %>% 
-         arrange(`Autor ID`, Polaridade) %>%
-         filter(Polaridade == "Negativo") %>%
-         arrange(`Autor ID`) %>%
+         dplyr::select(user_id, polarization) %>%
+         group_by(user_id, polarization) %>% 
+         arrange(user_id, polarization) %>%
+         filter(polarization == "Negativo") %>%
+         arrange(user_id) %>%
          summarise(total = n()) %>%
          arrange(total) %>%
          filter(total > 3) %>%
          tail(50) %>%
          ggplot() + 
          geom_bar(stat = "identity", 
-                  aes(x = reorder(`Autor ID`,as.numeric(total)), y = as.numeric(total), fill = Polaridade)
+                  aes(x = reorder(user_id,as.numeric(total)), y = as.numeric(total), fill = polarization)
          ) + 
          ylab("Número de Comentários") +
          xlab("") +
-         scale_fill_manual("Polaridade", values = c("Positivo" = corpositivo, "Negativo" = cornegativo, "Neutro" = corneutro)) +
-         geom_text( aes (x = reorder(`Autor ID`,as.numeric(total)), y = as.numeric(total), label = as.numeric(total) ) , vjust = 0, hjust = 0, size = 2 ) + 
-         coord_flip()
+         scale_fill_manual("polarization", values = c("Positivo" = corpositivo, "Negativo" = cornegativo, "Neutro" = corneutro)) +
+         geom_text( aes (x = reorder(user_id,as.numeric(total)), y = as.numeric(total), label = as.numeric(total) ) , vjust = 0, hjust = 0, size = 2 ) + 
+         coord_flip() +
+        theme_bw()
    }
 
    plotApoiadoresAssiduos = function() {
@@ -546,9 +390,10 @@ function(input, output) {
          ) + 
          ylab("Número de Comentários") +
          xlab("") +
-         scale_fill_manual("Polaridade", values = c("Positivo" = corpositivo, "Negativo" = cornegativo, "Neutro" = corneutro)) +
+         scale_fill_manual("polarization", values = c("Positivo" = corpositivo, "Negativo" = cornegativo, "Neutro" = corneutro)) +
          geom_text( aes (x = reorder(user_id,as.numeric(total)), y = as.numeric(total), label = as.numeric(total) ) , vjust = 0, hjust = 0, size = 2 ) + 
-         coord_flip()
+         coord_flip() +
+        theme_bw()
    }
    
    plotPalavrasDetratores = function(){
@@ -561,7 +406,7 @@ function(input, output) {
          toupper()
       
       mydfm <- getDFMatrix(text);
-      words_td <- topfeatures(mydfm,50)
+      words_td <- topfeatures(mydfm,30)
       ggplot() + 
          geom_bar(stat = "identity", 
                   aes(x = reorder(names(words_td),as.numeric(words_td)), y = as.numeric(words_td)),
@@ -569,7 +414,8 @@ function(input, output) {
          ylab("Número de ocorrências") +
          xlab("") +
          geom_text( aes (x = reorder(names(words_td),as.numeric(words_td)), y = words_td, label = words_td ) , vjust = 0, hjust = 0, size = 2 ) + 
-         coord_flip()      
+         coord_flip() +
+        theme_bw()      
       
    }
    
@@ -601,8 +447,8 @@ function(input, output) {
          ylab("Número de ocorrências") +
          xlab("") + ggtitle("Palavras mais citadas por apoiadores") +
          geom_text( aes (x = reorder(names(words_td),as.numeric(words_td)), y = words_td, label = words_td ) , vjust = 0, hjust = 0, size = 2 ) + 
-         coord_flip()
-      
+         coord_flip() +
+        theme_bw()
    }
       
    plotSerieTemporal = function() {
@@ -614,16 +460,16 @@ function(input, output) {
          mutate( Data = ymd_hms(created_at) %>%
                     as.Date() %>%
                     format("%d/%m/%Y"),
-                 Polaridade = as.factor(toupper(polarization))
+                 polarization = as.factor(toupper(polarization))
          ) %>%
-         group_by(Data, Polaridade) %>%
+         group_by(Data, polarization) %>%
          summarise(count = n()) %>%
          group_by(Data) %>%
          mutate(freq = count / sum(count))
       
       primeirodia <- min(dmy(df_datas$Data));
       ultimodia <- max(dmy(df_datas$Data))
-      ggplot(df_datas, aes(x=dmy(Data), y=freq, fill=Polaridade)) +
+      ggplot(df_datas, aes(x=dmy(Data), y=freq, fill=polarization)) +
          geom_bar(position = "stack", stat = "identity") +
          scale_x_date(date_breaks = "1 day",
                       labels = date_format("%d/%m/%Y")) +
@@ -634,7 +480,7 @@ function(input, output) {
          theme(text = element_text(size=6), axis.text.x = element_text(angle=45, hjust=1)) +
          coord_cartesian(xlim = c(primeirodia, ultimodia)) +
          scale_fill_manual("Polaridade", values = c("POSITIVA" = corpositivo, "NEGATIVA" = cornegativo, "NEUTRA" = corneutro, "GOVERNO" = ggplotColours(n=4)[4])) +
-         geom_text(size = 2, col = "white", aes(x = dmy(Data), y = getPositionY(df_datas), label = paste(as.character(100*round(df_datas$freq,2)),"%",sep="")));
+         geom_text(size = 2, col = "white", aes(x = dmy(Data), y = getPositionY(df_datas), label = paste(as.character(100*round(df_datas$freq,2)),"%",sep=""))) + theme_bw();
       
    }
 
@@ -647,13 +493,13 @@ function(input, output) {
       file <- cleaningRelNI1Data(file)
       
       file <- file %>% 
-	      group_by(Polaridade, Grupos, Temas) %>%
-              summarise(npositivo = length(which(Polaridade == "Positivo")),
-	                nnegativo = length(which(Polaridade == "Negativo")),
-			nneutro = length(which(Polaridade == "Neutro")),
+	      group_by(polarization, tags) %>%
+              summarise(npositivo = length(which(polarization == "Positivo")),
+	                nnegativo = length(which(polarization == "Negativo")),
+			nneutro = length(which(polarization == "Neutro")),
 			is = ifelse(((npositivo + nnegativo)==0),0,ifelse((nnegativo + npositivo > 2),(npositivo - nnegativo) / (npositivo + nnegativo), 0)))%>%
             ungroup()%>%
-            select(Grupos, Temas, npositivo, nnegativo, is)
+            select(tags, npositivo, nnegativo, is)
 
       file$is <- round(as.numeric(file$is),digits=2) 
       positivos <- file %>%
@@ -774,7 +620,7 @@ function(input, output) {
          ylab("Número de comentários") +
          xlab("") +
          scale_fill_manual("Polaridade", values = c("POSITIVA" = corpositivo, "NEGATIVA" = cornegativo, "NEUTRA" = corneutro)) +
-         #   geom_text( aes (x = reorder(`Autor ID`,as.numeric(n)), y = as.numeric(n), label = as.numeric(n) ) , vjust = 0, hjust = 0, size = 2 ) + 
+         #   geom_text( aes (x = reorder(user_id,as.numeric(n)), y = as.numeric(n), label = as.numeric(n) ) , vjust = 0, hjust = 0, size = 2 ) + 
          coord_flip()
    }
    
@@ -803,7 +649,7 @@ function(input, output) {
    plotPalavrasNegativas = function() {
       filepath <- input$file$datapath
       file <- read_xlsx(filepath)
-      text <- toupper(file$Conteúdo[which(toupper(file$Polaridade) == "NEGATIVA")])
+      text <- toupper(file$Conteúdo[which(toupper(file$polarization) == "NEGATIVA")])
       unigram <- getUnigram(text)
       unigram <- unigram %>% 
         filter(!(words %in% badwords))%>% 
@@ -825,7 +671,7 @@ function(input, output) {
    plotPalavrasPositivas = function() {
       filepath <- input$file$datapath
       file <- read_xlsx(filepath)
-      text <- toupper(file$Conteúdo[which(toupper(file$Polaridade) == "POSITIVA")])
+      text <- toupper(file$Conteúdo[which(toupper(file$polarization) == "POSITIVA")])
       unigram <- getUnigram(text)
       unigram <- unigram %>% 
         filter(!(words %in% badwords))%>% 
@@ -847,7 +693,7 @@ function(input, output) {
    plotPalavrasNeutras = function() {
       filepath <- input$file$datapath
       file <- read_xlsx(filepath)
-      text <- toupper(file$Conteúdo[which(toupper(file$Polaridade) == "NEUTRA")])
+      text <- toupper(file$Conteúdo[which(toupper(file$polarization) == "NEUTRA")])
       unigram <- getUnigram(text)
       unigram <- unigram %>% 
         filter(!(words %in% badwords))%>% 
