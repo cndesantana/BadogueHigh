@@ -5,9 +5,9 @@ account: datascout-analytics
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 2137015
-bundleId: 3028115
+bundleId: 3029319
 url: https://datascout-analytics.shinyapps.io/BadogueHi/
-when: 1587147546.53735
+when: 1587162998.42491
 asMultiple: FALSE
 asStatic: FALSE
 ignoredFiles: lista_marco.xlsx|moema_01032019_15032019.csv|moema_subset.csv|moema_subset.xlsx|pagina_rui.csv|regiao10.xlsx|s4-350842-139.csv|figures_badogue/post1 (1).jpg|figures_badogue/post1.jpg|figures_badogue/post2 (1).jpg|figures_badogue/post2.jpg

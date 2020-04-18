@@ -244,7 +244,7 @@ getMatrizDeOcorrencias <- function(text){
 
 getIndiceDeFavorabilidade <- function(polarization){
    sentimentos <- toupper(polarization)
-   allsentimentos <- c("NEUTRA","NEGATIVA","POSITIVA");
+   allsentimentos <- c("NEUTRO","NEGATIVO","POSITIVO");
    mp <- length(which(sentimentos==allsentimentos[3]));#POSITIVA
    mt <- length(polarization);#Total
   
@@ -332,7 +332,7 @@ function(input, output) {
          group_by(user_id) %>% 
          count(user_id, polarization) %>%
          arrange(n, user_id) %>%
-         tail(50) %>% 
+         tail(20) %>% 
          ggplot() + 
          geom_bar(stat = "identity", 
                   aes(x = reorder(user_id,as.numeric(n)), y = as.numeric(n), fill = polarization)) + 
@@ -344,20 +344,39 @@ function(input, output) {
         theme_bw()
    }
    
+   plotUsuariosAssiduos = function() {
+     filepath <- input$file$datapath
+     file <- read_xlsx(filepath)
+     
+     file %>% 
+       group_by(user_id) %>% 
+       summarise(total = n()) %>%
+       arrange(total) %>%
+       filter(total >= 1) %>%
+       tail(20) %>%
+       ggplot() + 
+       geom_bar(stat = "identity", 
+                aes(x = reorder(user_id,as.numeric(total)), y = as.numeric(total))
+       ) + 
+       ylab("Número de Comentários") +
+       xlab("") +
+       labs(title = "Principais comentaristas")+
+       geom_text( aes (x = reorder(user_id,as.numeric(total)), y = as.numeric(total), label = as.numeric(total) ) , vjust = 0, hjust = 0, size = 2 ) + 
+       coord_flip() +
+       theme_bw()
+   } 
+   
    plotDetratoresAssiduos = function() {
       filepath <- input$file$datapath
       file <- read_xlsx(filepath)
       
       file %>% 
-         dplyr::select(user_id, polarization) %>%
          group_by(user_id, polarization) %>% 
-         arrange(user_id, polarization) %>%
          filter(toupper(polarization) == "NEGATIVO") %>%
          arrange(user_id) %>%
          summarise(total = n()) %>%
          arrange(total) %>%
-         filter(total >= 1) %>%
-         tail(50) %>%
+         tail(20) %>%
          ggplot() + 
          geom_bar(stat = "identity", 
                   aes(x = reorder(user_id,as.numeric(total)), y = as.numeric(total), fill = polarization)
@@ -376,15 +395,11 @@ function(input, output) {
       file <- read_xlsx(filepath)
       
       file %>% 
-         dplyr::select(user_id, polarization) %>%
-         group_by(user_id, polarization) %>% 
-         arrange(user_id, polarization) %>%
          filter(toupper(polarization) == "POSITIVO") %>%
-         arrange(user_id) %>%
+         group_by(user_id) %>% 
          summarise(total = n()) %>%
          arrange(total) %>%
-         filter(total >= 1) %>%
-         tail(30) %>%
+         tail(20) %>%
          ggplot() + 
          geom_bar(stat = "identity", 
                   aes(x = reorder(user_id,as.numeric(total)), y = as.numeric(total), fill = polarization)
@@ -426,18 +441,8 @@ function(input, output) {
       filepath <- input$file$datapath
       file <- read_xlsx(filepath)
       
-      autores <- file %>% 
-         filter(toupper(polarization) == "POSITIVO") %>%
-         group_by(user, polarization) %>% 
-         summarise(total = n()) %>%
-         arrange(total) %>%
-         filter(total > 3) %>%
-         tail(50) %>%
-         dplyr::select(user)
-      
       text <- file %>%
-         filter(as.character(user) %in% autores$user, 
-                toupper(polarization) == "POSITIVO") %>%
+         filter(toupper(polarization) == "POSITIVO") %>%
          dplyr::select(text) %>%
          toupper()
       
@@ -497,7 +502,7 @@ function(input, output) {
         filter(!is.na(words)) %>% 
         group_by(words) %>% 
         summarise(nwords = n()) %>% 
-        arrange(nwords) %>% tail(30)
+        arrange(nwords) %>% tail(20)
     unigram %>% 
       ggplot() + 
          geom_bar(stat = "identity", 
@@ -520,7 +525,7 @@ function(input, output) {
         filter(!is.na(words)) %>% 
         group_by(words) %>% 
         summarise(nwords = n()) %>% 
-        arrange(nwords) %>% tail(30)
+        arrange(nwords) %>% tail(20)
       unigram %>% 
         ggplot() + 
         geom_bar(stat = "identity", 
@@ -528,7 +533,7 @@ function(input, output) {
                  fill = cornegativo) + 
         ylab("Número de ocorrências") +
         xlab("") +
-        labs(title = "Palavras mais citadas em comentários negativos")+
+        labs(title = "Palavras mais citadas", subtitle = "comentários Negativos")+
         geom_text( aes (x = reorder(words,nwords), y = nwords, label = nwords ) , vjust = 0, hjust = 0, size = 2 ) + 
         coord_flip()
    }   
@@ -543,7 +548,7 @@ function(input, output) {
         filter(!is.na(words)) %>% 
         group_by(words) %>% 
         summarise(nwords = n()) %>% 
-        arrange(nwords) %>% tail(30)
+        arrange(nwords) %>% tail(20)
       unigram %>% 
         ggplot() + 
         geom_bar(stat = "identity", 
@@ -551,7 +556,7 @@ function(input, output) {
                  fill = corpositivo) + 
         ylab("Número de ocorrências") +
         xlab("") +
-        labs(title = "Palavras mais citadas em comentários positivos")+
+        labs(title = "Palavras mais citadas", subtitle = "comentários Positivos")+
         
         geom_text( aes (x = reorder(words,nwords), y = nwords, label = nwords ) , vjust = 0, hjust = 0, size = 2 ) + 
         coord_flip()
@@ -567,7 +572,7 @@ function(input, output) {
         filter(!is.na(words)) %>% 
         group_by(words) %>% 
         summarise(nwords = n()) %>% 
-        arrange(nwords) %>% tail(30)
+        arrange(nwords) %>% tail(20)
       unigram %>% 
         ggplot() + 
         geom_bar(stat = "identity", 
@@ -575,7 +580,7 @@ function(input, output) {
                  fill = corneutro) + 
         ylab("Número de ocorrências") +
         xlab("") +
-        labs(title = "Palavras mais citadas em comentários neutros")+
+        labs(title = "Palavras mais citadas", subtitle= "comentários Neutros")+
         
         geom_text( aes (x = reorder(words,nwords), y = nwords, label = nwords ) , vjust = 0, hjust = 0, size = 2 ) + 
         coord_flip()
@@ -584,59 +589,43 @@ function(input, output) {
    plotWordcloud = function(){
       filepath <- input$file$datapath
       file <- read_xlsx(filepath)
-      text <- toupper(file$text)
+      text <- iconv(toupper(file$text),"latin1","ASCII",sub="")
       mydfm <- getDFMatrix(text);
       set.seed(100)
-      if(dim(mydfm)[1] <= 1000){
-         textplot_wordcloud(mydfm, min_count = 1, colorrandom_orderrotation = FALSE,
-                            rot.per = .25, 
-                            colors = RColorBrewer::brewer.pal(8,"Dark2")[4:8])        
-      }else{
-         textplot_wordcloud(mydfm[1:1000], min_count = 1, colorrandom_orderrotation = FALSE,
-                            rot.per = .25, 
-                            colors = RColorBrewer::brewer.pal(8,"Dark2")[4:8])        
-      }
-      
+      textplot_wordcloud(mydfm, min_count = 1, 
+                            rotation = .25, 
+                            color = RColorBrewer::brewer.pal(8,"Dark2")[4:8])        
    }
       
    plotWordcloudNegativo = function(){
      filepath <- input$file$datapath
      file <- read_xlsx(filepath)
+     text <- iconv(toupper(file$text),"latin1","ASCII",sub="")
      text <- toupper(file$text[which(toupper(file$polarization) == "NEGATIVO")])
      mydfm <- getDFMatrix(text);
      set.seed(100)
-     if(dim(mydfm)[1] <= 1000){
-       textplot_wordcloud(mydfm, min_count = 3, colorrandom_orderrotation = FALSE,rot.per = .25,colors = RColorBrewer::brewer.pal(8,"Reds")[4:8])        
-     }else{
-       textplot_wordcloud(mydfm[1:1000], min_count = 3, colorrandom_orderrotation = FALSE,rot.per = .25,colors = RColorBrewer::brewer.pal(8,"Reds")[4:8])        
-     }
+     textplot_wordcloud(mydfm, min_count = 1, rotation = .25,color = RColorBrewer::brewer.pal(8,"Reds")[4:8])        
   }
   
   plotWordcloudPositivo = function(){
      filepath <- input$file$datapath
      file <- read_xlsx(filepath)
+     text <- iconv(toupper(file$text),"latin1","ASCII",sub="")
      text <- toupper(file$text[which(toupper(file$polarization) == "POSITIVO")])
      mydfm <- getDFMatrix(text);
      set.seed(100)
-     if(dim(mydfm)[1] <= 1000){
-      textplot_wordcloud(mydfm, min_count = 3, colorrandom_orderrotation = FALSE,rot.per = .25,colors = RColorBrewer::brewer.pal(8,"Blues")[4:8])       
-     }else{
-       textplot_wordcloud(mydfm[1:1000], min_count = 3, colorrandom_orderrotation = FALSE,rot.per = .25,colors = RColorBrewer::brewer.pal(8,"Blues")[4:8])        
-     }
+     textplot_wordcloud(mydfm, min_count = 1, rotation = .25,color = RColorBrewer::brewer.pal(8,"Blues")[4:8])       
      
   }
   
   plotWordcloudNeutro = function(){
      filepath <- input$file$datapath
      file <- read_xlsx(filepath)
+     text <- iconv(toupper(file$text),"latin1","ASCII",sub="")
      text <- toupper(file$text[which(toupper(file$polarization) == "NEUTRO")])
      mydfm <- getDFMatrix(text);
      set.seed(100)
-     if(dim(mydfm)[1] <= 1000){
-       textplot_wordcloud(mydfm, min_count= 3, colorrandom_orderrotation = FALSE,rot.per = .25,colors = RColorBrewer::brewer.pal(8,"Greens")[4:8])        
-     }else{
-       textplot_wordcloud(mydfm[1:1000], min_count = 3, colorrandom_orderrotation = FALSE,rot.per = .25,colors = RColorBrewer::brewer.pal(8,"Greens")[4:8])        
-     }
+     textplot_wordcloud(mydfm, min_count= 1, rotation = .25,color = RColorBrewer::brewer.pal(8,"Greens")[4:8])        
   }
 
 ## Treemap
@@ -704,7 +693,7 @@ function(input, output) {
                          grow = F, reflow=TRUE) + 
        geom_treemap_subgroup_text(place = "bottomright", grow = F, alpha = 1, 
                                   col="white", cex=10) +
-       ggtitle("Palavras mais comentadas")+
+       ggtitle("Palavras mais comentadas em comentários Negativos")+
        scale_fill_identity() +
        scale_alpha_continuous(range = c(0.4, 1),guide = 'none')
   }
@@ -739,7 +728,7 @@ function(input, output) {
                          grow = F, reflow=TRUE) + 
        geom_treemap_subgroup_text(place = "bottomright", grow = F, alpha = 1, 
                                   col="white", cex=10) +
-       ggtitle("Palavras mais comentadas")+
+       ggtitle("Palavras mais comentadas em comentários Positivos")+
        scale_fill_identity() +
        scale_alpha_continuous(range = c(0.4, 1),guide = 'none')
   }
@@ -775,7 +764,7 @@ function(input, output) {
                          grow = F, reflow=TRUE) + 
        geom_treemap_subgroup_text(place = "bottomright", grow = F, alpha = 1, 
                                   col="white", cex=10) +
-       ggtitle("Palavras mais comentadas")+
+       ggtitle("Palavras mais comentadas em comentários Neutros")+
        scale_fill_identity() +
        scale_alpha_continuous(range = c(0.4, 1),guide = 'none')
      }
@@ -807,6 +796,20 @@ function(input, output) {
      }
   )
 
+  output$usuariosmaisassiduos = downloadHandler(
+    filename = function() {
+      paste("usuariosmaisassiduos.png", sep = "")
+    },
+    content = function(file) {
+      device <- function(..., width, height) {
+        grDevices::png(..., width = width, height = height,
+                       res = 300, units = "in")
+      }
+      ggsave(file, plot = plotUsuariosAssiduos(), device = device)
+      
+    }     
+  )
+  
   output$comentaristaspopulares = downloadHandler(
      filename = function() {
         paste("comentaristaspopulares.png", sep = "")
